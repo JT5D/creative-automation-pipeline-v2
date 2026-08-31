@@ -10,9 +10,7 @@ Campaign Forge turns a structured campaign brief and product assets into localiz
 
 A three-minute walkthrough: local setup and sample mode, the eight-market brief, the generation boundary that protects approved packaging, one live provider call, the 48-creative result, pre-spend compliance checks, measured run efficiency, and ZIP delivery.
 
-[![Play the three-minute Campaign Forge demo](docs/images/campaign-forge-browser.png)](https://github.com/JT5D/creative-automation-pipeline-v2/blob/main/docs/video/campaign-forge-demo.mp4)
-
-▶ **[Play the demo (2:59, MP4)](https://github.com/JT5D/creative-automation-pipeline-v2/blob/main/docs/video/campaign-forge-demo.mp4)**
+▶ **[Play the demo (2:59, MP4)](https://github.com/JT5D/creative-automation-pipeline-v2/raw/main/docs/video/campaign-forge-demo.mp4)**
 
 ## Quick start
 
