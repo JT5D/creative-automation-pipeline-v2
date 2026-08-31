@@ -49,7 +49,9 @@ describe("Adobe Firefly provider", () => {
     expect(generationBody.modelId).toBe("firefly_image");
     expect(generationBody.aspectRatio).toBe("1:1");
     expect(generationBody.prompt).toContain("Berry Charge");
-    expect(generationBody.prompt).toContain("approved transparent packshot");
+    expect(generationBody.prompt).toContain("approved packshot");
+    expect(generationBody.prompt).toContain("checkerboards");
+    expect(generationBody.prompt).toContain("edge to edge");
     expect((calls[1].init?.headers as Record<string, string>).Authorization).toBe("Bearer test-token");
   });
 

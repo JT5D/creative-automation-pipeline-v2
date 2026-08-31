@@ -287,7 +287,7 @@ async function createCropSafeBase(heroPath: string, ratio: Ratio, primaryColor: 
   };
 }
 
-function renderOverlay(
+export function renderOverlay(
   { brief, market, ratio }: { brief: CampaignBrief; market: Market; ratio: Ratio },
   width: number,
   height: number
@@ -297,7 +297,7 @@ function renderOverlay(
   const margin = Math.round(width * 0.055);
   const titleSize = isVertical ? 86 : isLandscape ? 78 : 76;
   const maxChars = isVertical ? 18 : isLandscape ? 21 : 18;
-  const messageLayout = fitText(market.message.toUpperCase(), maxChars, 4);
+  const messageLayout = fitHeadline(market.message.toUpperCase(), maxChars, 4, isLandscape);
   const titleY = isVertical ? 470 : 300;
   const lineHeight = Math.round(titleSize * 0.93);
   const titleWidth = isLandscape ? Math.round(width * 0.42) : Math.round(width * 0.68);
@@ -311,6 +311,7 @@ function renderOverlay(
   const footerLastY = isVertical ? 1640 : height - Math.max(48, Math.round(height * 0.035));
   const footerFirstY = footerLastY - (footerLayout.lines.length - 1) * footerLineHeight;
   const ctaWidth = market.callToAction.length * 18 + 68;
+  const renderedCtaWidth = Math.min(titleWidth, ctaWidth);
   const gradient = isLandscape
     ? `<linearGradient id="scrim" x1="0" x2="1"><stop offset="0" stop-color="${brief.brand.primaryColor}" stop-opacity=".96"/><stop offset=".82" stop-color="${brief.brand.primaryColor}" stop-opacity=".12"/><stop offset="1" stop-color="${brief.brand.primaryColor}" stop-opacity="0"/></linearGradient>`
     : `<linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${brief.brand.primaryColor}" stop-opacity=".94"/><stop offset=".76" stop-color="${brief.brand.primaryColor}" stop-opacity=".18"/><stop offset="1" stop-color="${brief.brand.primaryColor}" stop-opacity="0"/></linearGradient>`;
@@ -329,12 +330,22 @@ function renderOverlay(
     <text x="${margin}" y="${brandY}" fill="#fff" font-family="Arial, sans-serif" font-weight="800" font-size="${isVertical ? 48 : 40}" letter-spacing="8">${escapeXml(brief.brand.name.toUpperCase())}</text>
     <rect x="${margin}" y="${titleY - titleSize}" width="8" height="${Math.max(titleSize, messageLayout.lines.length * lineHeight - 10)}" fill="${brief.brand.secondaryColor}"/>
     <g transform="translate(${24},0)">${title}</g>
-    <rect x="${margin}" y="${ctaY - 39}" width="${Math.min(titleWidth, ctaWidth)}" height="68" rx="5" fill="${brief.brand.secondaryColor}"/>
-    <text x="${margin + 34}" y="${ctaY + 8}" fill="#111" font-family="Arial, sans-serif" font-weight="800" font-size="30">${escapeXml(market.callToAction.toUpperCase())}</text>
+    <rect x="${margin}" y="${ctaY - 39}" width="${renderedCtaWidth}" height="68" rx="5" fill="${brief.brand.secondaryColor}"/>
+    <text x="${margin + renderedCtaWidth / 2}" y="${ctaY + 8}" text-anchor="middle" fill="#111" font-family="Arial, sans-serif" font-weight="800" font-size="30">${escapeXml(market.callToAction.toUpperCase())}</text>
     <rect x="${margin - 14}" y="${footerFirstY - footerFontSize - 9}" width="${width - margin * 2 + 28}" height="${footerLayout.lines.length * footerLineHeight + 16}" rx="5" fill="${brief.brand.primaryColor}" fill-opacity=".7"/>
     ${footer}
   </svg>`;
   return { svg, copyFits, safeZonePassed };
+}
+
+function fitHeadline(value: string, maxChars: number, maxLines: number, preferSentenceLines: boolean): { lines: string[]; fits: boolean } {
+  if (preferSentenceLines) {
+    const sentences = value.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((sentence) => sentence.trim()).filter(Boolean) ?? [];
+    if (sentences.length > 1 && sentences.length <= maxLines && sentences.every((sentence) => sentence.length <= maxChars)) {
+      return { lines: sentences, fits: true };
+    }
+  }
+  return fitText(value, maxChars, maxLines);
 }
 
 function fitText(value: string, maxChars: number, maxLines: number): { lines: string[]; fits: boolean } {

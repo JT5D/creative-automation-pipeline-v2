@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { CampaignBriefSchema, type CampaignBrief } from "../src/shared/schema.js";
-import { runPipeline } from "../src/server/pipeline.js";
+import { renderOverlay, runPipeline } from "../src/server/pipeline.js";
 import type { ImageProvider } from "../src/server/providers/index.js";
 
 const projectRoot = path.resolve(process.cwd());
@@ -20,6 +20,26 @@ async function sampleBrief(): Promise<CampaignBrief> {
 }
 
 describe("creative pipeline", () => {
+  it("adapts landscape headline wrapping to the brief and centers CTA text geometrically", async () => {
+    const brief = await sampleBrief();
+    const market = { ...brief.markets[0], message: "Bright energy. Ready anywhere.", callToAction: "Discover now" };
+    const overlay = renderOverlay({ brief, market, ratio: "16x9" }, 1920, 1080);
+
+    expect(overlay.svg).toContain(">BRIGHT ENERGY.</text>");
+    expect(overlay.svg).toContain(">READY ANYWHERE.</text>");
+    expect(overlay.svg).toContain('text-anchor="middle"');
+    expect(overlay.copyFits).toBe(true);
+
+    const continuousMessage = renderOverlay({
+      brief,
+      market: { ...market, message: "One compact promise for every market" },
+      ratio: "16x9"
+    }, 1920, 1080);
+    expect(continuousMessage.svg).toContain(">ONE COMPACT PROMISE</text>");
+    expect(continuousMessage.svg).toContain(">FOR EVERY MARKET</text>");
+    expect(continuousMessage.copyFits).toBe(true);
+  });
+
   it("produces every product × locale × required aspect ratio with organized outputs", async () => {
     const outputRoot = await mkdtemp(path.join(os.tmpdir(), "campaign-forge-"));
     temporary.push(outputRoot);
