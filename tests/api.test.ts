@@ -65,15 +65,33 @@ describe("HTTP API", () => {
     expect(run.body.report.metrics.generatedLive).toBe(0);
   }, 30_000);
 
-  it("accepts supported image uploads and rejects other file types", async () => {
+  it("uploads an asset, reuses it in a campaign run, and rejects unsupported files", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "campaign-forge-upload-"));
     temporary.push(root);
+    await mkdir(path.join(root, "samples"), { recursive: true });
+    await cp(path.join(process.cwd(), "samples"), path.join(root, "samples"), { recursive: true });
     const app = createApp(root, {});
+    const sample = await request(app).get("/api/sample").expect(200);
     const image = await request(app)
       .post("/api/assets")
-      .attach("asset", path.join(process.cwd(), "samples/assets/berry-charge-packshot.webp"))
+      .attach("asset", path.join(process.cwd(), "samples/assets/citrus-lift-approved-hero.webp"))
       .expect(201);
     expect(image.body.path).toMatch(/^workspace\/uploads\//);
+
+    const brief = {
+      ...sample.body.brief,
+      products: sample.body.brief.products.map((product: { id: string }) => product.id === "berry-charge"
+        ? { ...product, approvedHeroPath: image.body.path }
+        : product)
+    };
+    const run = await request(app).post("/api/runs").send({ brief, imageProvider: "sample" }).expect(201);
+    const uploadedProduct = run.body.report.products.find((product: { productId: string }) => product.productId === "berry-charge");
+    expect(uploadedProduct.source).toBe("approved");
+    expect(uploadedProduct.creatives).toHaveLength(6);
+    expect(run.body.report.metrics.reused).toBe(2);
+    expect(run.body.report.metrics.generatedSample).toBe(0);
+    await request(app).get(uploadedProduct.creatives[0].publicUrl).expect(200).expect("content-type", /image\/png/);
+
     await request(app).post("/api/assets").attach("asset", Buffer.from("not an image"), "notes.txt").expect(400);
-  });
+  }, 30_000);
 });
