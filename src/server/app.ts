@@ -1,9 +1,10 @@
 import { createReadStream } from "node:fs";
-import { mkdir, readFile, readdir } from "node:fs/promises";
+import { mkdir, readFile, readdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import archiver from "archiver";
 import express from "express";
 import multer from "multer";
+import sharp from "sharp";
 import { parse as parseYaml } from "yaml";
 import { CampaignBriefJsonSchema, CampaignBriefSchema, formatZodError } from "../shared/schema.js";
 import { runPipeline } from "./pipeline.js";
@@ -22,13 +23,13 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
       },
       filename: (_request, file, callback) => callback(null, `${Date.now()}-${safeName(file.originalname)}`)
     }),
-    limits: { fileSize: 15 * 1024 * 1024, files: 1 },
-    fileFilter: (_request, file, callback) => callback(null, ["image/png", "image/jpeg", "image/webp"].includes(file.mimetype))
+    limits: { fileSize: 15 * 1024 * 1024, files: 1 }
   });
 
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
   app.use("/samples", express.static(path.join(projectRoot, "samples"), { fallthrough: false }));
+  app.use("/workspace/uploads", express.static(uploadRoot, { fallthrough: false, maxAge: "1h" }));
   app.use("/outputs", express.static(outputRoot, { fallthrough: false, immutable: true, maxAge: "1h" }));
 
   app.get("/api/health", (_request, response) => response.json({ ok: true }));
@@ -55,13 +56,26 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
     const raw = typeof request.body?.raw === "string" ? request.body.raw : "";
     response.json({ brief: parseBrief(raw) });
   });
-  app.post("/api/assets", upload.single("asset"), (request, response) => {
+  app.post("/api/assets", upload.single("asset"), async (request, response) => {
     if (!request.file) return response.status(400).json({ error: "Choose a PNG, JPEG, or WebP asset under 15 MB" });
-    return response.status(201).json({
-      path: path.relative(projectRoot, request.file.path).split(path.sep).join("/"),
-      name: request.file.originalname,
-      bytes: request.file.size
-    });
+    try {
+      const metadata = await sharp(request.file.path).metadata();
+      if (!metadata.width || !metadata.height || !["png", "jpeg", "webp"].includes(metadata.format ?? "")) {
+        throw new Error("Unsupported image data");
+      }
+      return response.status(201).json({
+        path: path.relative(projectRoot, request.file.path).split(path.sep).join("/"),
+        name: request.file.originalname,
+        bytes: request.file.size,
+        format: metadata.format,
+        width: metadata.width,
+        height: metadata.height,
+        hasAlpha: metadata.hasAlpha ?? false
+      });
+    } catch {
+      await unlink(request.file.path).catch(() => undefined);
+      return response.status(400).json({ error: "The uploaded file is not a valid PNG, JPEG, or WebP image" });
+    }
   });
   app.post("/api/runs", async (request, response, next) => {
     try {
@@ -83,6 +97,12 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
       const provider = requestedProvider === "sample" || !providerId ? null : runtime.providers[providerId];
       if (providerId && !provider) {
         return response.status(422).json({ error: "The selected image provider is not verified" });
+      }
+      const productsNeedingGeneration = brief.products.filter((product) => !product.approvedHeroPath && !product.cachedGeneratedHeroPath);
+      if (!provider && productsNeedingGeneration.length) {
+        return response.status(422).json({
+          error: `${productsNeedingGeneration.map((product) => product.name).join(", ")} requires a verified image provider or cached sample`
+        });
       }
       const report = await runPipeline(brief, { projectRoot, outputRoot, provider });
       response.status(201).json({
@@ -117,7 +137,9 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
 
   app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
     const message = error instanceof Error ? error.message : String(error);
-    const status = message.includes("stopped before generation") || message.includes("brief") || message.includes("products") ? 422 : 500;
+    const status = error instanceof multer.MulterError ? 400
+      : message.includes("stopped before generation") || message.includes("brief") || message.includes("products") ? 422
+      : 500;
     response.status(status).json({ error: message });
   });
   return app;

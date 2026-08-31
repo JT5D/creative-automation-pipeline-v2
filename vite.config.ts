@@ -8,6 +8,8 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": "http://127.0.0.1:3001",
+      "/samples": "http://127.0.0.1:3001",
+      "/workspace": "http://127.0.0.1:3001",
       "/outputs": "http://127.0.0.1:3001"
     }
   },

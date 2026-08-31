@@ -34,6 +34,7 @@ type ProviderStatus = {
 
 type WorkspaceMetrics = { campaigns: number; creatives: number; estimatedTimeSavedMinutes: number };
 type SamplesPayload = { briefs: CampaignBrief[]; providers: ProviderStatus; workspace: WorkspaceMetrics };
+type UploadedAsset = { productId: string; name: string; format: string; width: number; height: number; hasAlpha: boolean };
 
 export function App() {
   const [brief, setBrief] = useState<CampaignBrief | null>(null);
@@ -49,6 +50,7 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadedAsset, setUploadedAsset] = useState<UploadedAsset | null>(null);
   const [briefEditorOpen, setBriefEditorOpen] = useState(false);
   const [briefDraft, setBriefDraft] = useState("");
   const [briefEditorError, setBriefEditorError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export function App() {
   const creative = productResult?.creatives.find((item) => item.ratio === activeRatio && item.locale === activeLocale)
     ?? productResult?.creatives.find((item) => item.ratio === activeRatio)
     ?? productResult?.creatives[0];
-  const previewUrl = creative?.publicUrl ?? fallbackPreview(activeProduct?.id);
+  const previewUrl = creative?.publicUrl ?? fallbackPreview(activeProduct);
   const metrics = useMemo(() => {
     if (report) return report.metrics;
     const products = brief?.products.length ?? 0;
@@ -141,6 +143,7 @@ export function App() {
       const payload = await response.json() as { brief?: CampaignBrief; error?: string };
       if (!response.ok || !payload.brief) throw new Error(payload.error ?? "Brief import failed");
       setBrief(payload.brief);
+      setUploadedAsset(null);
       setReport(null);
       setDownloadUrl(null);
       setActiveProductId(payload.brief.products[0]?.id ?? "");
@@ -167,6 +170,7 @@ export function App() {
       const payload = await response.json() as { brief?: CampaignBrief; error?: string };
       if (!response.ok || !payload.brief) throw new Error(payload.error ?? "Brief validation failed");
       setBrief(payload.brief);
+      setUploadedAsset(null);
       setReport(null);
       setDownloadUrl(null);
       setActiveProductId(payload.brief.products[0]?.id ?? "");
@@ -180,19 +184,29 @@ export function App() {
 
   async function uploadAsset(file: File | undefined) {
     if (!file || !brief || !activeProduct) return;
+    const targetProductId = activeProduct.id;
     setUploading(true);
+    setUploadedAsset(null);
     setError(null);
     try {
       const body = new FormData();
       body.append("asset", file);
       const response = await fetch("/api/assets", { method: "POST", body });
-      const payload = await response.json() as { path?: string; error?: string };
+      const payload = await response.json() as { path?: string; error?: string } & Partial<UploadedAsset>;
       if (!response.ok || !payload.path) throw new Error(payload.error ?? "Asset upload failed");
-      setBrief({
-        ...brief,
-        products: brief.products.map((product) => product.id === activeProduct.id
+      setBrief((current) => current ? {
+        ...current,
+        products: current.products.map((product) => product.id === targetProductId
           ? { ...product, approvedHeroPath: payload.path }
           : product)
+      } : current);
+      setUploadedAsset({
+        productId: targetProductId,
+        name: payload.name ?? file.name,
+        format: payload.format ?? file.type,
+        width: payload.width ?? 0,
+        height: payload.height ?? 0,
+        hasAlpha: payload.hasAlpha ?? false
       });
       setReport(null);
       setDownloadUrl(null);
@@ -220,6 +234,7 @@ export function App() {
     const selected = sampleBriefs.find((item) => item.id === id);
     if (!selected) return;
     setBrief(selected);
+    setUploadedAsset(null);
     setReport(null);
     setDownloadUrl(null);
     setActiveProductId(selected.products[0]?.id ?? "");
@@ -312,9 +327,10 @@ export function App() {
             {brief.products.map((product) => {
               const result = report?.products.find((item) => item.productId === product.id);
               const source = result?.source ?? inferredSource(product, imageProvider !== "sample");
+              const thumbnail = fallbackPackshot(product);
               return (
                 <button key={product.id} className={`product-row ${activeProduct?.id === product.id ? "active" : ""}`} onClick={() => setActiveProductId(product.id)}>
-                  <img src={fallbackPackshot(product.id)} alt="" />
+                  {thumbnail ? <img src={thumbnail} alt="" /> : <span className="product-image-placeholder"><Box /></span>}
                   <span className="product-name">{product.name}</span>
                   <SourceStatus source={source} provider={result?.provider} />
                 </button>
@@ -323,12 +339,37 @@ export function App() {
           </div>
 
           <div className="assets-label">Assets for {activeProduct?.name}</div>
-          <button className="dropzone" onClick={() => assetInput.current?.click()} disabled={uploading}>
+          <button
+            className="dropzone"
+            onClick={() => assetInput.current?.click()}
+            onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (!uploading) void uploadAsset(event.dataTransfer.files?.[0]);
+            }}
+            disabled={uploading}
+          >
             {uploading ? <LoaderCircle className="spin" /> : <Upload />}
             <strong>{uploading ? "Uploading asset…" : "Drop an approved hero here"}</strong>
             <span>or click to browse · PNG, JPEG, WebP</span>
           </button>
-          <input ref={assetInput} hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void uploadAsset(event.target.files?.[0])} />
+          {uploadedAsset && uploadedAsset.productId === activeProduct?.id ? (
+            <div className="upload-success" role="status">
+              <Check />
+              <span><strong>Approved hero attached</strong>{uploadedAsset.name} · {uploadedAsset.width} × {uploadedAsset.height} · {uploadedAsset.format.toUpperCase()}{uploadedAsset.hasAlpha ? " · transparent" : ""}</span>
+            </div>
+          ) : null}
+          <input
+            ref={assetInput}
+            hidden
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = "";
+              void uploadAsset(file);
+            }}
+          />
           <ProviderControl providers={providers} value={imageProvider} disabled={running} onChange={selectImageProvider} />
         </section>
 
@@ -351,7 +392,9 @@ export function App() {
               {productResult && <SourceStatus source={productResult.source} provider={productResult.provider} />}
             </div>
             <div className={`creative-frame ratio-${activeRatio}`}>
-              <img key={previewUrl} src={previewUrl} alt={`${activeProduct?.name} ${activeRatio.replace("x", ":")} creative preview`} />
+              {previewUrl
+                ? <img key={previewUrl} src={previewUrl} alt={`${activeProduct?.name} ${activeRatio.replace("x", ":")} creative preview`} />
+                : <div className="empty-creative"><ImageIcon /><span>No source preview</span></div>}
               {!creative && (
                 <div className="pre-run-overlay">
                   <span>Source master</span>
@@ -465,7 +508,7 @@ function RatioSelector({ value, onChange }: { value: Ratio; onChange: (ratio: Ra
   );
 }
 
-type DisplaySource = AssetSource | "generation-pending" | "sample-available";
+type DisplaySource = AssetSource | "generation-pending" | "sample-available" | "missing";
 
 function SourceStatus({ source, provider }: { source: DisplaySource; provider?: string }) {
   const value = source === "approved"
@@ -476,6 +519,8 @@ function SourceStatus({ source, provider }: { source: DisplaySource; provider?: 
         ? { label: "Live generation pending", className: "generated", icon: <Sparkles /> }
         : source === "sample-available"
           ? { label: "Sample available", className: "cached", icon: <RefreshCw /> }
+          : source === "missing"
+            ? { label: "Asset required", className: "missing", icon: <CircleAlert /> }
           : { label: "Generated sample", className: "cached", icon: <RefreshCw /> };
   return <span className={`source-status ${value.className}`}>{value.icon}{value.label}</span>;
 }
@@ -593,15 +638,25 @@ function defaultCompliance(): ComplianceCheck[] {
 }
 
 function inferredSource(product: CampaignBrief["products"][number], liveProviderConfigured: boolean): DisplaySource {
-  return product.approvedHeroPath ? "approved" : liveProviderConfigured ? "generation-pending" : "sample-available";
+  return product.approvedHeroPath
+    ? "approved"
+    : liveProviderConfigured
+      ? "generation-pending"
+      : product.cachedGeneratedHeroPath
+        ? "sample-available"
+        : "missing";
 }
 
-function fallbackPreview(productId?: string): string {
-  return productId === "berry-charge" ? "/samples/assets/berry-charge-generated-sample.webp" : "/samples/assets/citrus-lift-approved-hero.webp";
+function fallbackPreview(product?: CampaignBrief["products"][number]): string | undefined {
+  return browserAssetPath(product?.approvedHeroPath ?? product?.cachedGeneratedHeroPath ?? product?.referenceAssetPath);
 }
 
-function fallbackPackshot(productId: string): string {
-  return productId === "berry-charge" ? "/samples/assets/berry-charge-packshot.webp" : "/samples/assets/citrus-lift-approved-hero.webp";
+function fallbackPackshot(product: CampaignBrief["products"][number]): string | undefined {
+  return browserAssetPath(product.referenceAssetPath ?? product.approvedHeroPath ?? product.cachedGeneratedHeroPath);
+}
+
+function browserAssetPath(value?: string): string | undefined {
+  return value?.startsWith("samples/") || value?.startsWith("workspace/uploads/") ? `/${value}` : undefined;
 }
 
 function dimensions(ratio: Ratio): string {

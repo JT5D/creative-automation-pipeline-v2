@@ -41,6 +41,8 @@ Four editable example campaigns are available from the **Example campaign** sele
 
 They share the same two product assets so comparisons can focus on market adaptation rather than setup. Campaign name, region, audience, campaign message, and each locale's message, CTA, and disclaimer are directly editable in the form. **View / edit** exposes the complete validated JSON contract in the app; JSON or YAML can also be imported to change products, brand tokens, prohibited terms, prompts, markets, and ratios.
 
+The approved-hero uploader accepts decoded PNG, JPEG, and WebP images up to 15 MB; it does not trust the filename or browser MIME label alone. Reusable fixtures are provided in `samples/uploads/` for an alpha-channel packshot, an opaque JPEG hero, and an opaque WebP hero. Asset paths are optional in the brief: with a verified provider, a product that has no image input is generated from its name, description, campaign, audience, market, and optional generation prompt.
+
 The included market copy is illustrative, not native-approved. Production localization should use transcreation—adapting intent, tone, idiom, CTA, and legal requirements for each market—followed by native-speaker and legal review.
 
 ## Image sources

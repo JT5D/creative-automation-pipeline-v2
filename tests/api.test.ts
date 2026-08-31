@@ -43,6 +43,15 @@ describe("HTTP API", () => {
     const sample = await request(app).get("/api/sample").expect(200);
     const json = await request(app).post("/api/brief/parse").send({ raw: JSON.stringify(sample.body.brief) }).expect(200);
     expect(json.body.brief.products).toHaveLength(2);
+    const assetlessBrief = {
+      ...sample.body.brief,
+      products: sample.body.brief.products.map((product: Record<string, unknown>, index: number) => index === 1
+        ? Object.fromEntries(Object.entries(product).filter(([key]) => !["approvedHeroPath", "referenceAssetPath", "cachedGeneratedHeroPath"].includes(key)))
+        : product)
+    };
+    await request(app).post("/api/brief/parse").send({ raw: JSON.stringify(assetlessBrief) }).expect(200);
+    const assetlessRun = await request(app).post("/api/runs").send({ brief: assetlessBrief, imageProvider: "sample" }).expect(422);
+    expect(assetlessRun.body.error).toContain("requires a verified image provider or cached sample");
     const schema = await request(app).get("/api/schema").expect(200);
     expect(schema.body.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(schema.body.additionalProperties).toBe(false);
@@ -77,6 +86,20 @@ describe("HTTP API", () => {
       .attach("asset", path.join(process.cwd(), "samples/assets/citrus-lift-approved-hero.webp"))
       .expect(201);
     expect(image.body.path).toMatch(/^workspace\/uploads\//);
+    expect(image.body).toEqual(expect.objectContaining({ format: "webp", width: 1100, height: 1100, hasAlpha: false }));
+    await request(app).get(`/${image.body.path}`).expect(200).expect("content-type", /image\/webp/);
+
+    const transparent = await request(app)
+      .post("/api/assets")
+      .attach("asset", path.join(process.cwd(), "samples/uploads/transparent-packshot.png"), { contentType: "application/octet-stream" })
+      .expect(201);
+    expect(transparent.body).toEqual(expect.objectContaining({ format: "png", width: 720, height: 1080, hasAlpha: true }));
+
+    const jpeg = await request(app)
+      .post("/api/assets")
+      .attach("asset", path.join(process.cwd(), "samples/uploads/opaque-square-hero.jpg"))
+      .expect(201);
+    expect(jpeg.body).toEqual(expect.objectContaining({ format: "jpeg", width: 900, height: 900, hasAlpha: false }));
 
     const brief = {
       ...sample.body.brief,
@@ -93,5 +116,8 @@ describe("HTTP API", () => {
     await request(app).get(uploadedProduct.creatives[0].publicUrl).expect(200).expect("content-type", /image\/png/);
 
     await request(app).post("/api/assets").attach("asset", Buffer.from("not an image"), "notes.txt").expect(400);
+    await request(app).post("/api/assets")
+      .attach("asset", Buffer.from("not an image"), { filename: "fake.png", contentType: "image/png" })
+      .expect(400);
   }, 30_000);
 });

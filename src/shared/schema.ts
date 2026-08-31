@@ -30,14 +30,7 @@ export const ProductSchema = z.object({
   referenceAssetPath: z.string().optional(),
   cachedGeneratedHeroPath: z.string().optional(),
   generationPrompt: z.string().min(12).max(800).optional()
-}).strict().superRefine((product, ctx) => {
-  if (!product.approvedHeroPath && !product.referenceAssetPath && !product.cachedGeneratedHeroPath) {
-    ctx.addIssue({
-      code: "custom",
-      message: "Provide an approved hero, reference asset, or cached generated hero"
-    });
-  }
-});
+}).strict();
 
 export const CampaignBriefSchema = z.object({
   schemaVersion: z.literal("1.0").default("1.0"),

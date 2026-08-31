@@ -149,4 +149,40 @@ describe("creative pipeline", () => {
     expect(report.events.some((event) => event.label === "Approved packshot composited")).toBe(true);
     await expect(readFile(path.join(outputRoot, berry.heroPath))).resolves.toBeInstanceOf(Buffer);
   }, 30_000);
+
+  it("generates a product with no input asset when a live provider is available", async () => {
+    const outputRoot = await mkdtemp(path.join(os.tmpdir(), "campaign-forge-assetless-"));
+    temporary.push(outputRoot);
+    const brief = await sampleBrief();
+    const assetlessProduct = { ...brief.products[1] };
+    delete assetlessProduct.approvedHeroPath;
+    delete assetlessProduct.referenceAssetPath;
+    delete assetlessProduct.cachedGeneratedHeroPath;
+    brief.products[1] = assetlessProduct;
+    let calls = 0;
+    const provider: ImageProvider = {
+      name: "test-provider",
+      model: "test-model",
+      async generate() {
+        calls += 1;
+        return {
+          bytes: await readFile(path.join(projectRoot, "samples/assets/citrus-lift-approved-hero.webp")),
+          mimeType: "image/png",
+          provider: "test-provider",
+          model: "test-model",
+          prompt: "assetless product scene",
+          requestId: "request-assetless"
+        };
+      }
+    };
+
+    const report = await runPipeline(brief, { projectRoot, outputRoot, provider });
+    const generated = report.products.find((product) => product.productId === assetlessProduct.id)!;
+
+    expect(calls).toBe(1);
+    expect(generated.source).toBe("generated-live");
+    expect(generated.creatives).toHaveLength(6);
+    expect(report.metrics.generatedLive).toBe(1);
+    expect(report.events.some((event) => event.productId === assetlessProduct.id && event.label === "Approved packshot composited")).toBe(false);
+  }, 30_000);
 });
