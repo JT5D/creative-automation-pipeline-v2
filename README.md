@@ -6,6 +6,14 @@ Campaign Forge turns a structured campaign brief and product assets into localiz
 
 *Completed live workflow: eight editable languages, an approved asset plus a Gemini-generated hero, three channel formats, measured run efficiency, compliance evidence, activity history, and ZIP delivery.*
 
+## Demo video
+
+A three-minute walkthrough: local setup and sample mode, the eight-market brief, the generation boundary that protects approved packaging, one live provider call, the 48-creative result, pre-spend compliance checks, measured run efficiency, and ZIP delivery.
+
+<video src="https://github.com/JT5D/creative-automation-pipeline-v2/raw/main/docs/video/campaign-forge-demo.mp4" poster="docs/images/campaign-forge-browser.png" controls width="100%"></video>
+
+[Watch the demo (2:59, MP4)](docs/video/campaign-forge-demo.mp4)
+
 ## Quick start
 
 Requires Node.js 22.12 or newer.
