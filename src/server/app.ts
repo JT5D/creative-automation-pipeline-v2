@@ -72,7 +72,9 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
         && (typeof requestedProvider !== "string" || !isProviderId(requestedProvider))) {
         return response.status(422).json({ error: "Choose a verified image provider or sample mode" });
       }
-      const providerId = typeof requestedProvider === "string" && isProviderId(requestedProvider)
+      const providerId = requestedProvider === "sample"
+        ? null
+        : typeof requestedProvider === "string" && isProviderId(requestedProvider)
         ? requestedProvider
         : runtime.status.selected;
       if (requestedProvider !== undefined && requestedProvider !== "sample" && !providerId) {

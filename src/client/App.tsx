@@ -586,6 +586,7 @@ function defaultCompliance(): ComplianceCheck[] {
     { id: "contrast", label: "Token contrast", passed: false, evidence: "Not yet run" },
     { id: "legal", label: "Legal copy", passed: false, evidence: "Not yet run" },
     { id: "copy-fit", label: "Copy fit", passed: false, evidence: "Not yet run" },
+    { id: "framing", label: "Hero framing", passed: false, evidence: "Not yet run" },
     { id: "safe-zone", label: "Story safe zone", passed: false, evidence: "Not yet run" },
     { id: "dimensions", label: "Channel dimensions", passed: false, evidence: "Not yet run" }
   ];

@@ -11,7 +11,7 @@ export type PipelineEvent = {
 };
 
 export type ComplianceCheck = {
-  id: "brand" | "palette" | "contrast" | "legal" | "dimensions" | "copy-fit" | "safe-zone";
+  id: "brand" | "palette" | "contrast" | "legal" | "dimensions" | "copy-fit" | "safe-zone" | "framing";
   label: string;
   passed: boolean;
   evidence: string;

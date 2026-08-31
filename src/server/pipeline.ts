@@ -6,10 +6,16 @@ import type { AssetSource, CampaignReport, ComplianceCheck, PipelineEvent, Produ
 import { scanLegal } from "./legal.js";
 import type { ImageProvider } from "./providers/index.js";
 
-const FORMAT: Record<Ratio, { width: number; height: number; position: string }> = {
-  "1x1": { width: 1080, height: 1080, position: "centre" },
-  "9x16": { width: 1080, height: 1920, position: "east" },
-  "16x9": { width: 1920, height: 1080, position: "centre" }
+const FORMAT: Record<Ratio, { width: number; height: number }> = {
+  "1x1": { width: 1080, height: 1080 },
+  "9x16": { width: 1080, height: 1920 },
+  "16x9": { width: 1920, height: 1080 }
+};
+
+const HERO_ZONE: Record<Ratio, { left: number; top: number; width: number; height: number }> = {
+  "1x1": { left: 0, top: 0, width: 1080, height: 1080 },
+  "9x16": { left: 0, top: 840, width: 1080, height: 1080 },
+  "16x9": { left: 800, top: 0, width: 1120, height: 1080 }
 };
 
 export type RunPipelineOptions = {
@@ -82,7 +88,7 @@ export async function runPipeline(input: CampaignBrief, options: RunPipelineOpti
     });
   }
 
-  event("compliance", "Outputs checked", "Brand lockup, palette, token contrast, legal copy, copy fit, safe zones, and dimensions");
+  event("compliance", "Outputs checked", "Brand lockup, palette, token contrast, legal copy, copy fit, product framing, safe zones, and dimensions");
   const completed = now();
   const creatives = results.flatMap((product) => product.creatives);
   const summaryChecks: ComplianceCheck[] = [
@@ -91,6 +97,7 @@ export async function runPipeline(input: CampaignBrief, options: RunPipelineOpti
     { id: "contrast", label: "Token contrast", passed: contrast.passed, evidence: contrast.evidence },
     { id: "legal", label: "Legal copy", passed: legal.passed, evidence: `${brief.brand.prohibitedWords.length} prohibited terms checked before provider spend` },
     { id: "copy-fit", label: "Copy fit", passed: creatives.every((item) => item.checks.find((check) => check.id === "copy-fit")?.passed), evidence: `${creatives.length}/${creatives.length} creatives passed message, CTA, and disclaimer fit checks` },
+    { id: "framing", label: "Hero framing", passed: creatives.every((item) => item.checks.find((check) => check.id === "framing")?.passed), evidence: `${creatives.length}/${creatives.length} creatives contain the complete source hero without pipeline cropping` },
     { id: "safe-zone", label: "Story safe zone", passed: creatives.filter((item) => item.ratio === "9x16").every((item) => item.checks.find((check) => check.id === "safe-zone")?.passed), evidence: "9:16 brand and legal copy stay clear of common story UI zones" },
     { id: "dimensions", label: "Channel dimensions", passed: creatives.every((item) => item.checks.find((check) => check.id === "dimensions")?.passed), evidence: "1:1 1080×1080 · 9:16 1080×1920 · 16:9 1920×1080" }
   ];
@@ -177,9 +184,9 @@ async function resolveHero(
     const source = await resolveProjectFile(options.projectRoot, product.cachedGeneratedHeroPath);
     const destination = path.join(sourceDir, `generated-sample${path.extname(source) || ".png"}`);
     await writeFile(destination, await readFile(source));
-    const warning = `${product.name}: using the included generated sample because no live provider credentials are configured.`;
+    const warning = `${product.name}: using the included cached sample; no live image generation occurred in this run.`;
     warnings.push(warning);
-    emit("generate", "Generated sample loaded", "Configure Firefly, OpenAI, or Gemini for live generation", product.id);
+    emit("generate", "Cached sample loaded", "Sample mode makes no provider call", product.id);
     return { heroPath: destination, source: "generated-sample", provider: "sample-asset" };
   }
 
@@ -188,13 +195,13 @@ async function resolveHero(
 
 async function compositeReferenceAsset(backgroundPath: string, referencePath: string, destination: string): Promise<void> {
   const size = 1254;
-  const productHeight = 880;
+  const productHeight = Math.round(size * 0.5);
   const product = await sharp(referencePath)
     .resize({ height: productHeight, fit: "inside", withoutEnlargement: true })
     .png()
     .toBuffer({ resolveWithObject: true });
   const left = Math.max(Math.round(size * 0.48), size - product.info.width - 72);
-  const top = Math.max(24, Math.round((size - product.info.height) / 2));
+  const top = Math.max(24, size - product.info.height - 96);
   await sharp(backgroundPath)
     .resize(size, size, { fit: "cover" })
     .composite([{ input: product.data, left, top }])
@@ -216,8 +223,8 @@ async function composeCreative(input: {
   await mkdir(destinationDir, { recursive: true });
   const outputPath = path.join(destinationDir, `${safeSegment(input.market.locale)}.png`);
   const overlay = renderOverlay(input, format.width, format.height);
-  const buffer = await sharp(input.heroPath)
-    .resize(format.width, format.height, { fit: "cover", position: format.position })
+  const base = await createCropSafeBase(input.heroPath, input.ratio, input.brief.brand.primaryColor);
+  const buffer = await sharp(base.buffer)
     .composite([{ input: Buffer.from(overlay.svg), top: 0, left: 0 }])
     .png({ compressionLevel: 8 })
     .toBuffer();
@@ -232,6 +239,7 @@ async function composeCreative(input: {
     { id: "contrast", label: "Token contrast", passed: evaluateTokenContrast(input.brief.brand.primaryColor, input.brief.brand.secondaryColor).passed, evidence: evaluateTokenContrast(input.brief.brand.primaryColor, input.brief.brand.secondaryColor).evidence },
     { id: "legal", label: "Legal copy", passed: legal.passed, evidence: `${input.brief.brand.prohibitedWords.length} prohibited terms checked before composition` },
     { id: "copy-fit", label: "Copy fit", passed: overlay.copyFits, evidence: "Message, CTA, and disclaimer fit their template regions" },
+    { id: "framing", label: "Hero framing", passed: base.framingPassed, evidence: base.framingEvidence },
     { id: "safe-zone", label: "Story safe zone", passed: overlay.safeZonePassed, evidence: input.ratio === "9x16" ? "Brand and legal copy stay within y=220–1700" : "Not applicable outside 9:16" },
     { id: "dimensions", label: "Channel dimensions", passed: metadata.width === format.width && metadata.height === format.height, evidence: `${metadata.width}×${metadata.height}` }
   ];
@@ -245,6 +253,37 @@ async function composeCreative(input: {
     publicUrl: `/outputs/${portable}`,
     bytes: buffer.length,
     checks
+  };
+}
+
+async function createCropSafeBase(heroPath: string, ratio: Ratio, primaryColor: string): Promise<{
+  buffer: Buffer;
+  framingPassed: boolean;
+  framingEvidence: string;
+}> {
+  const format = FORMAT[ratio];
+  const zone = HERO_ZONE[ratio];
+  const source = await sharp(heroPath).metadata();
+  if (!source.width || !source.height) throw new Error(`Cannot inspect hero dimensions: ${heroPath}`);
+  const scale = Math.min(zone.width / source.width, zone.height / source.height);
+  const renderedWidth = Math.round(source.width * scale);
+  const renderedHeight = Math.round(source.height * scale);
+  const hero = await sharp(heroPath)
+    .resize(zone.width, zone.height, { fit: "contain", background: primaryColor })
+    .png()
+    .toBuffer();
+  const buffer = await sharp({
+    create: { width: format.width, height: format.height, channels: 4, background: primaryColor }
+  })
+    .composite([{ input: hero, left: zone.left, top: zone.top }])
+    .png()
+    .toBuffer();
+  const framingPassed = renderedWidth <= zone.width && renderedHeight <= zone.height;
+  const placement = ratio === "9x16" ? "lower story zone" : ratio === "16x9" ? "right landscape panel" : "square canvas";
+  return {
+    buffer,
+    framingPassed,
+    framingEvidence: `${source.width}×${source.height} source contained at ${renderedWidth}×${renderedHeight} in ${placement}`
   };
 }
 

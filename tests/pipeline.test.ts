@@ -36,7 +36,8 @@ describe("creative pipeline", () => {
     expect(report.verification.messageRendered).toBe(true);
     expect(report.verification.organizedOutputs).toBe(true);
     expect(report.compliance.every((check) => check.passed)).toBe(true);
-    expect(report.compliance.map((check) => check.id)).toEqual(expect.arrayContaining(["contrast", "copy-fit", "safe-zone"]));
+    expect(report.compliance.map((check) => check.id)).toEqual(expect.arrayContaining(["contrast", "copy-fit", "framing", "safe-zone"]));
+    expect(report.compliance.find((check) => check.id === "framing")?.evidence).toContain("without pipeline cropping");
 
     const citrus = report.products.find((product) => product.productId === "citrus-lift")!;
     expect(new Set(citrus.creatives.map((creative) => creative.ratio))).toEqual(new Set(["1x1", "9x16", "16x9"]));

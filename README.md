@@ -4,7 +4,7 @@ Campaign Forge turns a structured campaign brief and product assets into localiz
 
 ![Campaign Forge reviewing a completed 48-creative European campaign](docs/images/campaign-forge-browser.png)
 
-*Completed workflow: eight editable languages, two source strategies, three channel formats, measured run efficiency, seven passed checks, activity evidence, and ZIP delivery. This credential-free screenshot shows sample provenance; a credentialed run labels the missing scene `Gemini generated` and records it as `generated-live`.*
+*Completed workflow: eight editable languages, two source strategies, three channel formats, measured run efficiency, compliance evidence, activity history, and ZIP delivery. This credential-free screenshot shows sample provenance; a credentialed run labels the missing scene `Gemini generated` and records it as `generated-live`.*
 
 ## Quick start
 
@@ -51,7 +51,7 @@ The pipeline selects one image path per product:
 |---|---|---|
 | `approvedHeroPath` | Reuse the supplied hero | `approved` |
 | Missing hero with provider credentials | Generate a scene; composite an approved packshot when supplied | `generated-live` |
-| Missing credentials with `cachedGeneratedHeroPath` | Use the included generated sample and display a warning | `generated-sample` |
+| Sample mode with `cachedGeneratedHeroPath` | Use the included cached sample and state that no live generation occurred | `generated-sample` |
 
 The sample brief demonstrates both asset reuse and missing-image handling. Citrus Lift reuses approved photography. Berry Charge supplies a transparent packshot; live mode generates only the scene, then Sharp composites the approved packaging so the model cannot alter label details.
 
@@ -184,7 +184,7 @@ This runs both TypeScript configurations, the Vitest suite, and the production b
 | Organized delivery | Timestamped product/ratio/locale folders, report, and ZIP |
 | Run/design/assumption/limit documentation | This README documents setup, inputs, outputs, design decisions, assumptions, and limitations |
 | **Bonus: localization** | Eight-language European preset; localized message, CTA, and disclaimer editing |
-| **Bonus: brand compliance** | Deterministic lockup/palette, safe zones, copy fit, and token contrast evidence |
+| **Bonus: brand compliance** | Deterministic lockup/palette, hero framing, safe zones, copy fit, and token contrast evidence |
 | **Bonus: legal checks** | Configurable prohibited-term gate runs before provider spend |
 | **Bonus: reporting** | Provenance, provider/model/prompt, checks, events, runtime, throughput, and time-saved estimate |
 
@@ -234,7 +234,7 @@ The most defensible headline metrics are campaign runs completed, creatives deli
 ## Design notes and limits
 
 - React and Express provide one local review workflow; the CLI calls the same pipeline.
-- Sharp handles deterministic resizing, overlays, localization, packshot composition, and PNG output.
+- Sharp uses non-cropping hero zones for every ratio, then handles deterministic overlays, localization, packshot composition, and PNG output. The report records the source and rendered bounds for each framing check.
 - Local storage keeps setup small. A production service would use object storage, queued/idempotent jobs, authentication, approval state, and persisted run history.
 - The prohibited-term scanner is a preflight aid, not legal approval.
 - The contrast check covers configured text-token pairs, not a pixel-level accessibility certification of arbitrary photography.
