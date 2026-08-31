@@ -4,7 +4,7 @@ Campaign Forge turns a structured campaign brief and product assets into localiz
 
 ![Campaign Forge reviewing a completed 48-creative European campaign](docs/images/campaign-forge-browser.png)
 
-*Completed workflow: eight editable languages, two source strategies, three channel formats, measured run efficiency, compliance evidence, activity history, and ZIP delivery. This credential-free screenshot shows sample provenance; a credentialed run labels the missing scene `Gemini generated` and records it as `generated-live`.*
+*Completed live workflow: eight editable languages, an approved asset plus a Gemini-generated hero, three channel formats, measured run efficiency, compliance evidence, activity history, and ZIP delivery.*
 
 ## Quick start
 
