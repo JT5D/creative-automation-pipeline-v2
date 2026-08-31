@@ -29,6 +29,7 @@ describe("HTTP API", () => {
     expect(run.body.report.metrics.creatives).toBe(12);
     expect(run.body.workspace.campaigns).toBe(1);
     expect(run.body.report.warnings[0]).toContain("included generated sample");
+    await request(app).post("/api/runs").send({ brief: sample.body.brief, imageProvider: "gemini" }).expect(422);
     await request(app).get(run.body.downloadUrl).expect(200).expect("content-type", /zip/);
   }, 30_000);
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CampaignBrief } from "../src/shared/schema.js";
 import { FireflyProvider } from "../src/server/providers/firefly.js";
 import { GeminiImageProvider } from "../src/server/providers/gemini.js";
-import { verifyProvider } from "../src/server/providers/index.js";
+import { verifyProvider, verifyProviders } from "../src/server/providers/index.js";
 
 const brief: CampaignBrief = {
   schemaVersion: "1.0",
@@ -67,6 +67,22 @@ describe("Adobe Firefly provider", () => {
 });
 
 describe("Google Gemini provider", () => {
+  it("exposes verified providers for safe per-run selection", async () => {
+    const runtime = await verifyProviders(
+      { IMAGE_PROVIDER: "auto", GEMINI_API_KEY: "valid-key" },
+      (id) => id === "gemini" ? {
+        name: "google-gemini",
+        model: "gemini-3-pro-image",
+        async probe() {},
+        async generate() { throw new Error("Not called"); }
+      } : null
+    );
+
+    expect(runtime.status.selected).toBe("gemini");
+    expect(runtime.status.options.find((option) => option.id === "gemini")?.verified).toBe(true);
+    expect(runtime.providers.gemini?.model).toBe("gemini-3-pro-image");
+  });
+
   it("does not report a configured provider as verified when its credential probe fails", async () => {
     const runtime = await verifyProvider(
       { IMAGE_PROVIDER: "gemini", GEMINI_API_KEY: "dead-key" },

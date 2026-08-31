@@ -109,8 +109,10 @@ p { color: var(--muted); }
 .provider-note { margin-top: 14px; padding: 12px; border: 1px solid #e2e2de; border-radius: 5px; background: var(--soft); display: grid; grid-template-columns: 20px 1fr; gap: 9px; }
 .provider-note > svg { width: 18px; color: var(--amber); }
 .provider-note.ready > svg { color: var(--green); }
-.provider-note strong, .provider-note span { display: block; }
-.provider-note strong { font-size: 11px; }
+.provider-note label, .provider-note span { display: block; }
+.provider-note label { margin-bottom: 5px; font-size: 11px; font-weight: 700; }
+.provider-note select { width: 100%; min-height: 34px; padding: 6px 8px; border: 1px solid #c9c9c5; border-radius: 4px; color: #202020; background: #fff; font-size: 11px; }
+.provider-note select:disabled { color: #777; background: #f1f1ef; }
 .provider-note span { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.35; }
 
 .review-heading { align-items: center; }

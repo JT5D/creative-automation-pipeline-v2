@@ -7,11 +7,11 @@ import multer from "multer";
 import { parse as parseYaml } from "yaml";
 import { CampaignBriefJsonSchema, CampaignBriefSchema, formatZodError } from "../shared/schema.js";
 import { runPipeline } from "./pipeline.js";
-import { verifyProvider } from "./providers/index.js";
+import { verifyProviders, type ProviderId } from "./providers/index.js";
 
 export function createApp(projectRoot: string, providerEnvironment: NodeJS.ProcessEnv = process.env) {
   const app = express();
-  const providerRuntime = verifyProvider(providerEnvironment);
+  const providerRuntime = verifyProviders(providerEnvironment);
   const outputRoot = path.join(projectRoot, "outputs");
   const uploadRoot = path.join(projectRoot, "workspace", "uploads");
   const upload = multer({
@@ -66,7 +66,23 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
   app.post("/api/runs", async (request, response, next) => {
     try {
       const brief = CampaignBriefSchema.parse(request.body?.brief);
-      const report = await runPipeline(brief, { projectRoot, outputRoot, provider: (await providerRuntime).provider });
+      const runtime = await providerRuntime;
+      const requestedProvider = request.body?.imageProvider;
+      if (requestedProvider !== undefined && requestedProvider !== "sample"
+        && (typeof requestedProvider !== "string" || !isProviderId(requestedProvider))) {
+        return response.status(422).json({ error: "Choose a verified image provider or sample mode" });
+      }
+      const providerId = typeof requestedProvider === "string" && isProviderId(requestedProvider)
+        ? requestedProvider
+        : runtime.status.selected;
+      if (requestedProvider !== undefined && requestedProvider !== "sample" && !providerId) {
+        return response.status(422).json({ error: "Choose a verified image provider or sample mode" });
+      }
+      const provider = requestedProvider === "sample" || !providerId ? null : runtime.providers[providerId];
+      if (providerId && !provider) {
+        return response.status(422).json({ error: "The selected image provider is not verified" });
+      }
+      const report = await runPipeline(brief, { projectRoot, outputRoot, provider });
       response.status(201).json({
         report,
         workspace: await workspaceMetrics(outputRoot),
@@ -103,6 +119,10 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
     response.status(status).json({ error: message });
   });
   return app;
+}
+
+function isProviderId(value: string): value is ProviderId {
+  return value === "firefly" || value === "openai" || value === "gemini";
 }
 
 function parseBrief(raw: string) {

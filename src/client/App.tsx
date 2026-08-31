@@ -21,11 +21,14 @@ import {
 import type { CampaignBrief, Market, Ratio } from "../shared/schema.js";
 import type { AssetSource, CampaignReport, ComplianceCheck, ProductResult } from "../shared/types.js";
 
+type ProviderId = "firefly" | "openai" | "gemini";
+type ProviderChoice = ProviderId | "sample";
 type ProviderStatus = {
-  selected: "firefly" | "openai" | "gemini" | null;
+  selected: ProviderId | null;
   fireflyConfigured: boolean;
   openAIConfigured: boolean;
   geminiConfigured: boolean;
+  options: Array<{ id: ProviderId; label: string; configured: boolean; verified: boolean; model?: string }>;
   verificationError?: string;
 };
 
@@ -37,6 +40,7 @@ export function App() {
   const [sampleBriefs, setSampleBriefs] = useState<CampaignBrief[]>([]);
   const [workspaceMetrics, setWorkspaceMetrics] = useState<WorkspaceMetrics | null>(null);
   const [providers, setProviders] = useState<ProviderStatus | null>(null);
+  const [imageProvider, setImageProvider] = useState<ProviderChoice>("sample");
   const [report, setReport] = useState<CampaignReport | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [activeProductId, setActiveProductId] = useState("");
@@ -64,6 +68,7 @@ export function App() {
         setSampleBriefs(payload.briefs);
         setBrief(initial);
         setProviders(payload.providers);
+        setImageProvider(payload.providers.selected ?? "sample");
         setWorkspaceMetrics(payload.workspace);
         setActiveProductId(initial.products[0]?.id ?? "");
         setActiveLocale(initial.markets[0]?.locale ?? "");
@@ -107,7 +112,7 @@ export function App() {
       const response = await fetch("/api/runs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brief })
+        body: JSON.stringify({ brief, imageProvider })
       });
       const payload = await response.json() as { report?: CampaignReport; workspace?: WorkspaceMetrics; downloadUrl?: string; error?: string };
       if (!response.ok || !payload.report) throw new Error(payload.error ?? "Campaign generation failed");
@@ -222,6 +227,12 @@ export function App() {
     setActiveRatio("1x1");
   }
 
+  function selectImageProvider(value: ProviderChoice) {
+    setImageProvider(value);
+    setReport(null);
+    setDownloadUrl(null);
+  }
+
   if (loading) return <LoadingScreen />;
   if (!brief) return <FatalError message={error ?? "Campaign brief unavailable"} />;
 
@@ -300,7 +311,7 @@ export function App() {
           <div className="product-list">
             {brief.products.map((product) => {
               const result = report?.products.find((item) => item.productId === product.id);
-              const source = result?.source ?? inferredSource(product, Boolean(providers?.selected));
+              const source = result?.source ?? inferredSource(product, imageProvider !== "sample");
               return (
                 <button key={product.id} className={`product-row ${activeProduct?.id === product.id ? "active" : ""}`} onClick={() => setActiveProductId(product.id)}>
                   <img src={fallbackPackshot(product.id)} alt="" />
@@ -318,7 +329,7 @@ export function App() {
             <span>or click to browse · PNG, JPEG, WebP</span>
           </button>
           <input ref={assetInput} hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void uploadAsset(event.target.files?.[0])} />
-          <ProviderNote providers={providers} />
+          <ProviderControl providers={providers} value={imageProvider} disabled={running} onChange={selectImageProvider} />
         </section>
 
         <section className="review-panel">
@@ -469,15 +480,34 @@ function SourceStatus({ source, provider }: { source: DisplaySource; provider?: 
   return <span className={`source-status ${value.className}`}>{value.icon}{value.label}</span>;
 }
 
-function ProviderNote({ providers }: { providers: ProviderStatus | null }) {
-  const verified = providers?.selected;
-  const unavailable = Boolean(providers?.verificationError);
-  const providerName = verified === "firefly" ? "Adobe Firefly" : verified === "gemini" ? "Google Gemini" : "OpenAI";
+function ProviderControl({
+  providers,
+  value,
+  disabled,
+  onChange
+}: {
+  providers: ProviderStatus | null;
+  value: ProviderChoice;
+  disabled: boolean;
+  onChange: (value: ProviderChoice) => void;
+}) {
+  const selected = providers?.options.find((option) => option.id === value);
+  const live = value !== "sample" && Boolean(selected?.verified);
   return (
-    <div className={`provider-note ${verified ? "ready" : "sample"}`}>
+    <div className={`provider-note ${live ? "ready" : "sample"}`}>
       <Zap />
-      <div><strong>{verified ? `${providerName} verified` : unavailable ? "Provider unavailable" : "Sample mode"}</strong>
-      <span>{verified ? "Credentials verified. Missing heroes will call the live provider." : unavailable ? "Configured credentials could not be verified. Included samples will be used." : "Included samples keep local runs self-contained. Add server credentials for live generation."}</span></div>
+      <div>
+        <label htmlFor="image-provider">Image provider</label>
+        <select id="image-provider" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value as ProviderChoice)}>
+          <option value="sample">Included sample · no API call</option>
+          {providers?.options.map((option) => (
+            <option key={option.id} value={option.id} disabled={!option.verified}>
+              {option.label} · {option.verified ? "verified" : option.configured ? "unavailable" : "not configured"}
+            </option>
+          ))}
+        </select>
+        <span>{live ? `${selected?.label} is verified. One live call is made per missing product.` : "Sample mode is deterministic and makes no provider call."} Formats and markets add no generation calls.</span>
+      </div>
     </div>
   );
 }

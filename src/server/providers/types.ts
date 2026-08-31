@@ -21,10 +21,21 @@ export interface ImageProvider {
   generate(request: GenerateRequest): Promise<GeneratedAsset>;
 }
 
+export type ProviderId = "firefly" | "openai" | "gemini";
+
+export type ProviderOption = {
+  id: ProviderId;
+  label: string;
+  configured: boolean;
+  verified: boolean;
+  model?: string;
+};
+
 export type ProviderStatus = {
-  selected: "firefly" | "openai" | "gemini" | null;
+  selected: ProviderId | null;
   fireflyConfigured: boolean;
   openAIConfigured: boolean;
   geminiConfigured: boolean;
+  options: ProviderOption[];
   verificationError?: string;
 };

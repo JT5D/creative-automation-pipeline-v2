@@ -20,7 +20,7 @@ npm run dev
 
 Open `http://127.0.0.1:5173`, review the preloaded brief, and select **Generate campaign**. The Express API runs on port 3001. No database, Docker, cloud storage, or API credential is required for sample mode; Windows PowerShell users can replace `cp` with `Copy-Item`.
 
-For live generation, add `GEMINI_API_KEY` to `.env` and leave `IMAGE_PROVIDER=auto`, then restart `npm run dev`. Secrets stay server-side and `.env` is ignored by Git.
+For live generation, add `GEMINI_API_KEY` to `.env` and leave `IMAGE_PROVIDER=auto`, then restart `npm run dev`. The UI offers every configured provider that passes its boot-time credential probe plus an explicit **Included sample · no API call** option. Secrets stay server-side and `.env` is ignored by Git.
 
 Run `npm run check` before a credentialed live run. At server boot, Campaign Forge makes one no-spend authentication request; **Google Gemini verified** confirms that the credential probe passed. **Gemini generated** and `verification.imageGeneration: "live"` in `report.json` confirm that image generation completed.
 
@@ -213,6 +213,23 @@ This runs both TypeScript configurations, the Vitest suite, and the production b
 Currency spend, CTR, and conversion data are intentionally not invented. Provider pricing is external and can change; production would record provider billing metadata, attach delivery IDs to each creative, ingest channel performance, and compare cost and results by market, source, message, and format.
 
 The most defensible headline metrics are campaign runs completed, creatives delivered, elapsed time/output rate, estimated production time saved, and asset reuse. The MVP does not invent performance lift before channel data exists.
+
+## Glossary
+
+| Term | Meaning |
+|---|---|
+| API | Application Programming Interface—the server boundary used by the UI, CLI, and image providers |
+| BCP 47 | The standard format for language-and-region identifiers such as `fr-FR` or `en-GB` |
+| CLI | Command-Line Interface; the non-browser way to run the same pipeline |
+| CTA | Call to action—the short instruction on an ad, such as “Discover” |
+| CTR | Click-through rate—the percentage of impressions that produce a click |
+| C2PA | Coalition for Content Provenance and Authenticity; the standard behind signed Content Credentials |
+| GenAI | Generative AI; used here only to create a missing product scene |
+| JSON / YAML | Structured text formats accepted for campaign briefs |
+| KPI | Key performance indicator, such as output rate or approval-cycle time |
+| MVP | Minimum viable product—the smallest working implementation that proves the workflow |
+| ROI | Return on investment; business results relative to time and spend |
+| WCAG | Web Content Accessibility Guidelines; the source of the configured contrast threshold |
 
 ## Design notes and limits
 

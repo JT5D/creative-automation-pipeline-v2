@@ -1,9 +1,16 @@
 import { FireflyProvider } from "./firefly.js";
 import { GeminiImageProvider } from "./gemini.js";
 import { OpenAIImageProvider } from "./openai.js";
-import type { ImageProvider, ProviderStatus } from "./types.js";
+import type { ImageProvider, ProviderId, ProviderOption, ProviderStatus } from "./types.js";
 
 type ProviderEnvironment = NodeJS.ProcessEnv;
+type ProviderFactory = (id: ProviderId, env: ProviderEnvironment) => ImageProvider | null;
+
+const PROVIDERS: Array<Pick<ProviderOption, "id" | "label">> = [
+  { id: "firefly", label: "Adobe Firefly" },
+  { id: "openai", label: "OpenAI Images" },
+  { id: "gemini", label: "Google Gemini" }
+];
 
 export function providerStatus(env: ProviderEnvironment = process.env): ProviderStatus {
   const fireflyConfigured = Boolean(env.FIREFLY_SERVICES_CLIENT_ID && env.FIREFLY_SERVICES_CLIENT_SECRET);
@@ -23,21 +30,75 @@ export function providerStatus(env: ProviderEnvironment = process.env): Provider
           : geminiConfigured
             ? "gemini"
             : null;
-  return { selected, fireflyConfigured, openAIConfigured, geminiConfigured };
+  return {
+    selected,
+    fireflyConfigured,
+    openAIConfigured,
+    geminiConfigured,
+    options: PROVIDERS.map(({ id, label }) => ({
+      id,
+      label,
+      configured: id === "firefly" ? fireflyConfigured : id === "openai" ? openAIConfigured : geminiConfigured,
+      verified: false
+    }))
+  };
 }
 
-export function selectProvider(env: ProviderEnvironment = process.env): ImageProvider | null {
-  const status = providerStatus(env);
-  if (status.selected === "firefly") {
+export function createProvider(id: ProviderId, env: ProviderEnvironment = process.env): ImageProvider | null {
+  if (id === "firefly" && env.FIREFLY_SERVICES_CLIENT_ID && env.FIREFLY_SERVICES_CLIENT_SECRET) {
     return new FireflyProvider(env.FIREFLY_SERVICES_CLIENT_ID!, env.FIREFLY_SERVICES_CLIENT_SECRET!);
   }
-  if (status.selected === "openai") {
+  if (id === "openai" && env.OPENAI_API_KEY) {
     return new OpenAIImageProvider(env.OPENAI_API_KEY!, env.OPENAI_IMAGE_MODEL ?? "gpt-image-2");
   }
-  if (status.selected === "gemini") {
+  if (id === "gemini" && env.GEMINI_API_KEY) {
     return new GeminiImageProvider(env.GEMINI_API_KEY!, env.GEMINI_IMAGE_MODEL ?? "gemini-3-pro-image");
   }
   return null;
+}
+
+export function selectProvider(env: ProviderEnvironment = process.env): ImageProvider | null {
+  const selected = providerStatus(env).selected;
+  return selected ? createProvider(selected, env) : null;
+}
+
+export async function verifyProviders(
+  env: ProviderEnvironment = process.env,
+  factory: ProviderFactory = createProvider
+): Promise<{
+  providers: Partial<Record<ProviderId, ImageProvider>>;
+  status: ProviderStatus;
+}> {
+  const status = providerStatus(env);
+  const providers: Partial<Record<ProviderId, ImageProvider>> = {};
+  const options = await Promise.all(status.options.map(async (option): Promise<ProviderOption> => {
+    if (!option.configured) return option;
+    const provider = factory(option.id, env);
+    if (!provider) return option;
+    try {
+      await provider.probe?.();
+      providers[option.id] = provider;
+      return { ...option, verified: true, model: provider.model };
+    } catch {
+      return option;
+    }
+  }));
+  const requested = env.IMAGE_PROVIDER?.toLowerCase();
+  const explicitlyRequested = requested === "firefly" || requested === "openai" || requested === "gemini";
+  const selected = explicitlyRequested
+    ? (providers[requested] ? requested : null)
+    : (status.selected && providers[status.selected] ? status.selected : PROVIDERS.find(({ id }) => providers[id])?.id ?? null);
+  return {
+    providers,
+    status: {
+      ...status,
+      selected,
+      options,
+      verificationError: options.some((option) => option.configured && !option.verified)
+        ? "One or more configured provider credentials could not be verified"
+        : undefined
+    }
+  };
 }
 
 export async function verifyProvider(
@@ -65,4 +126,4 @@ export async function verifyProvider(
   }
 }
 
-export type { ImageProvider, ProviderStatus } from "./types.js";
+export type { ImageProvider, ProviderId, ProviderOption, ProviderStatus } from "./types.js";
