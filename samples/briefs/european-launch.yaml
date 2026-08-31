@@ -1,0 +1,37 @@
+schemaVersion: "1.0"
+id: northline-europe-launch
+name: Everyday Energy / Europe
+region: Europe
+audience: Mobile-first urban adults seeking a modern, zero-sugar energy option
+message: One campaign, adapted for eight European languages.
+manualMinutesPerCreative: 7
+
+brand:
+  name: NORTHLINE
+  primaryColor: "#073A9D"
+  secondaryColor: "#FF8A1E"
+  prohibitedWords: [cure, miracle, guaranteed, clinically proven]
+
+products:
+  - id: citrus-lift
+    name: Citrus Lift
+    description: Sparkling citrus energy with natural caffeine, vitamin B12, and zero sugar.
+    approvedHeroPath: samples/assets/citrus-lift-approved-hero.webp
+  - id: berry-charge
+    name: Berry Charge
+    description: Sparkling berry energy with natural caffeine and zero sugar.
+    referenceAssetPath: samples/assets/berry-charge-packshot.webp
+    cachedGeneratedHeroPath: samples/assets/berry-charge-generated-sample.webp
+    generationPrompt: Premium berry energy drink campaign photography with raspberry, blackberry, crisp water, ice, and deep cobalt negative space.
+
+markets:
+  - { locale: en-GB, label: Europe / English, message: Bright energy. Ready anywhere., callToAction: Discover now, disclaimer: "Caffeine: 80 mg per can." }
+  - { locale: de-DE, label: Europa / Deutsch, message: Helle Energie. Überall bereit., callToAction: Jetzt entdecken, disclaimer: "Koffein: 80 mg pro Dose." }
+  - { locale: fr-FR, label: Europe / Français, message: "Une énergie vive, partout.", callToAction: Découvrir, disclaimer: "Caféine : 80 mg par canette." }
+  - { locale: es-ES, label: Europa / Español, message: "Energía viva, estés donde estés.", callToAction: Descubrir, disclaimer: "Cafeína: 80 mg por lata." }
+  - { locale: it-IT, label: Europa / Italiano, message: "Energia brillante, ovunque.", callToAction: Scopri ora, disclaimer: "Caffeina: 80 mg per lattina." }
+  - { locale: pt-PT, label: Europa / Português, message: "Energia viva, em qualquer lugar.", callToAction: Descobrir, disclaimer: "Cafeína: 80 mg por lata." }
+  - { locale: nl-NL, label: Europa / Nederlands, message: Heldere energie. Overal klaar., callToAction: Ontdek nu, disclaimer: "Cafeïne: 80 mg per blik." }
+  - { locale: pl-PL, label: Europa / Polski, message: Jasna energia. Gotowa wszędzie., callToAction: Odkryj teraz, disclaimer: "Kofeina: 80 mg w puszce." }
+
+ratios: [1x1, 9x16, 16x9]

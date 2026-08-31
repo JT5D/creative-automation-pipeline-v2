@@ -1,0 +1,48 @@
+schemaVersion: "1.0"
+id: northline-active-energy-ca
+name: Active Energy / Canada
+region: Canada
+audience: Urban outdoor enthusiasts 25-40 seeking a convenient afternoon reset
+message: A brighter reset, wherever you go.
+manualMinutesPerCreative: 7
+
+brand:
+  name: NORTHLINE
+  primaryColor: "#073A9D"
+  secondaryColor: "#FF8A1E"
+  prohibitedWords:
+    - cure
+    - miracle
+    - guaranteed
+    - clinically proven
+
+products:
+  - id: citrus-lift
+    name: Citrus Lift
+    description: Sparkling citrus energy with natural caffeine, vitamin B12, and zero sugar.
+    approvedHeroPath: samples/assets/citrus-lift-approved-hero.webp
+
+  - id: berry-charge
+    name: Berry Charge
+    description: Sparkling berry energy with natural caffeine and zero sugar.
+    referenceAssetPath: samples/assets/berry-charge-packshot.webp
+    cachedGeneratedHeroPath: samples/assets/berry-charge-generated-sample.webp
+    generationPrompt: Premium Canadian outdoor lifestyle scene with berries, sparkling water, ice, and cobalt negative space.
+
+markets:
+  - locale: en-CA
+    label: Canada / English
+    message: Bright energy for the next move.
+    callToAction: Explore the range
+    disclaimer: "Caffeine content: 80 mg per can."
+
+  - locale: fr-CA
+    label: Canada / Français
+    message: Une énergie vive pour la suite.
+    callToAction: Voir la gamme
+    disclaimer: "Teneur en caféine : 80 mg par canette."
+
+ratios:
+  - 1x1
+  - 9x16
+  - 16x9

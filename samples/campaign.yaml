@@ -1,0 +1,48 @@
+schemaVersion: "1.0"
+id: northline-fresh-energy-de
+name: Fresh Energy / Germany
+region: Germany
+audience: Urban professionals 25-40 seeking clean, modern energy
+message: Bright energy. Zero compromise.
+manualMinutesPerCreative: 5
+
+brand:
+  name: NORTHLINE
+  primaryColor: "#073A9D"
+  secondaryColor: "#FF8A1E"
+  prohibitedWords:
+    - cure
+    - miracle
+    - guaranteed
+    - clinically proven
+
+products:
+  - id: citrus-lift
+    name: Citrus Lift
+    description: Sparkling citrus energy with natural caffeine, vitamin B12, and zero sugar.
+    approvedHeroPath: samples/assets/citrus-lift-approved-hero.webp
+
+  - id: berry-charge
+    name: Berry Charge
+    description: Sparkling berry energy with natural caffeine and zero sugar.
+    referenceAssetPath: samples/assets/berry-charge-packshot.webp
+    cachedGeneratedHeroPath: samples/assets/berry-charge-generated-sample.webp
+    generationPrompt: Premium berry energy drink campaign photography with raspberry, blackberry, crisp water, ice, and deep cobalt negative space.
+
+markets:
+  - locale: en-DE
+    label: Germany / English
+    message: Bright energy. Zero compromise.
+    callToAction: Discover now
+    disclaimer: "Caffeine content: 80 mg per can."
+
+  - locale: de-DE
+    label: Deutschland / Deutsch
+    message: Helle Energie. Ohne Kompromisse.
+    callToAction: Jetzt entdecken
+    disclaimer: "Koffeingehalt: 80 mg pro Dose."
+
+ratios:
+  - 1x1
+  - 9x16
+  - 16x9

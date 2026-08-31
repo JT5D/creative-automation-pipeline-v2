@@ -1,0 +1,48 @@
+schemaVersion: "1.0"
+id: northline-summer-energy-us
+name: Summer Energy / California
+region: California, United States
+audience: Active commuters 21-38 looking for a crisp zero-sugar refresh
+message: Clean lift for the long way home.
+manualMinutesPerCreative: 6
+
+brand:
+  name: NORTHLINE
+  primaryColor: "#073A9D"
+  secondaryColor: "#FF8A1E"
+  prohibitedWords:
+    - cure
+    - miracle
+    - guaranteed
+    - clinically proven
+
+products:
+  - id: citrus-lift
+    name: Citrus Lift
+    description: Sparkling citrus energy with natural caffeine, vitamin B12, and zero sugar.
+    approvedHeroPath: samples/assets/citrus-lift-approved-hero.webp
+
+  - id: berry-charge
+    name: Berry Charge
+    description: Sparkling berry energy with natural caffeine and zero sugar.
+    referenceAssetPath: samples/assets/berry-charge-packshot.webp
+    cachedGeneratedHeroPath: samples/assets/berry-charge-generated-sample.webp
+    generationPrompt: Sunlit California commute campaign scene with berry, crisp water, ice, and cobalt negative space.
+
+markets:
+  - locale: en-US
+    label: California / English
+    message: Clean lift. Zero sugar.
+    callToAction: Find your flavor
+    disclaimer: "Caffeine content: 80 mg per can."
+
+  - locale: es-US
+    label: California / Español
+    message: Energía ligera. Cero azúcar.
+    callToAction: Elige tu sabor
+    disclaimer: "Contenido de cafeína: 80 mg por lata."
+
+ratios:
+  - 1x1
+  - 9x16
+  - 16x9
