@@ -248,3 +248,5 @@ The most defensible headline metrics are campaign runs completed, creatives deli
 - The contrast check covers configured text-token pairs, not a pixel-level accessibility certification of arbitrary photography.
 - Provenance is stored in `report.json`; production-grade cryptographic Content Credentials/C2PA signing would require a trusted signer and preservation through final composition.
 - Provider adapters are contract-tested with mocked HTTP responses. A verified status proves authentication; a successful credentialed run and its `report.json` prove image generation.
+
+- See v1 here: https://github.com/JT5D/creative-automation-pipeline
