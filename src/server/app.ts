@@ -77,6 +77,7 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
       return response.status(400).json({ error: "The uploaded file is not a valid PNG, JPEG, or WebP image" });
     }
   });
+  // Trust boundary: re-validate here even though the client already did. Credentials never leave this process.
   app.post("/api/runs", async (request, response, next) => {
     try {
       const brief = CampaignBriefSchema.parse(request.body?.brief);
@@ -137,6 +138,7 @@ export function createApp(projectRoot: string, providerEnvironment: NodeJS.Proce
 
   app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
     const message = error instanceof Error ? error.message : String(error);
+    // Preflight failures ("stopped before generation") are 422: well-formed request, unacceptable content.
     const status = error instanceof multer.MulterError ? 400
       : message.includes("stopped before generation") || message.includes("brief") || message.includes("products") ? 422
       : 500;

@@ -1,5 +1,6 @@
 import type { GenerateRequest } from "./types.js";
 
+// The prompt only describes pixels that may vary. Copy, logo, packaging and legal text are rendered by code.
 export function buildGenerationPrompt({ brief, product }: GenerateRequest): string {
   const base = product.generationPrompt ??
     `Premium editorial product photography for ${product.name}. ${product.description}.`;

@@ -16,6 +16,7 @@ export function providerStatus(env: ProviderEnvironment = process.env): Provider
   const fireflyConfigured = Boolean(env.FIREFLY_SERVICES_CLIENT_ID && env.FIREFLY_SERVICES_CLIENT_SECRET);
   const openAIConfigured = Boolean(env.OPENAI_API_KEY);
   const geminiConfigured = Boolean(env.GEMINI_API_KEY);
+  // auto = first configured of firefly -> openai -> gemini. Only providers that pass their boot probe are offered to the UI.
   const requested = env.IMAGE_PROVIDER?.toLowerCase();
   const selected = requested === "firefly" && fireflyConfigured
     ? "firefly"

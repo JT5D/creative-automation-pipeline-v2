@@ -32,6 +32,7 @@ export const ProductSchema = z.object({
   generationPrompt: z.string().min(12).max(800).optional()
 }).strict();
 
+// One runtime contract for the file, the HTTP body and the TS types. strict() turns drift into an error instead of a surprise.
 export const CampaignBriefSchema = z.object({
   schemaVersion: z.literal("1.0").default("1.0"),
   id: z.string().regex(/^[a-z0-9-]+$/),

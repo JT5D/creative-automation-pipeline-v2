@@ -106,6 +106,7 @@ export function App() {
     };
   }, [brief, report]);
 
+  // The server is authoritative: render whatever report it returns, and clear stale results whenever inputs change.
   async function generateCampaign() {
     if (!brief || running) return;
     setRunning(true);

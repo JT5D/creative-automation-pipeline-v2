@@ -6,12 +6,14 @@ import type { AssetSource, CampaignReport, ComplianceCheck, PipelineEvent, Produ
 import { scanLegal } from "./legal.js";
 import type { ImageProvider } from "./providers/index.js";
 
+// Exact channel sizes. A new ratio touches RatioSchema, FORMAT, HERO_ZONE, RatioSelector and the count tests.
 const FORMAT: Record<Ratio, { width: number; height: number }> = {
   "1x1": { width: 1080, height: 1080 },
   "9x16": { width: 1080, height: 1920 },
   "16x9": { width: 1920, height: 1080 }
 };
 
+// Where the hero may sit per format. Story keeps the lower 1080px so copy gets a quiet band inside the platform-safe zone (y 220-1700).
 const HERO_ZONE: Record<Ratio, { left: number; top: number; width: number; height: number }> = {
   "1x1": { left: 0, top: 0, width: 1080, height: 1080 },
   "9x16": { left: 0, top: 840, width: 1080, height: 1080 },
@@ -38,6 +40,7 @@ export async function runPipeline(input: CampaignBrief, options: RunPipelineOpti
   };
 
   event("brief", "Brief validated", `${brief.products.length} products · ${brief.ratios.length} formats`);
+  // Preflight: cheap deterministic checks fail here, before any folder exists or a provider is paid.
   const legal = scanLegal(brief);
   event("preflight", "Legal preflight complete", legal.passed ? "No prohibited language" : `${legal.matches.length} issue(s)`);
   if (!legal.passed) {
@@ -65,6 +68,7 @@ export async function runPipeline(input: CampaignBrief, options: RunPipelineOpti
   await mkdir(campaignDir, { recursive: true });
   const results: ProductResult[] = [];
 
+  // Resolve the hero once per product, then fan out ratio x market in code. One model call covers every variant.
   for (const product of brief.products) {
     event("asset", "Resolving source asset", undefined, product.id);
     const hero = await resolveHero(brief, product, options, campaignDir, event, warnings);
@@ -142,6 +146,7 @@ export async function runPipeline(input: CampaignBrief, options: RunPipelineOpti
   return report;
 }
 
+// Source priority: approved hero -> live provider -> explicit cached sample -> fail. No silent fallback; the report records which won.
 async function resolveHero(
   brief: CampaignBrief,
   product: Product,
@@ -193,6 +198,7 @@ async function resolveHero(
   throw new Error(`${product.name} has no approved hero and no live image provider is configured`);
 }
 
+// The model never sees the packshot. Approved pixels are placed by code, lower right, never enlarged.
 async function compositeReferenceAsset(backgroundPath: string, referencePath: string, destination: string): Promise<void> {
   const size = 1254;
   const productHeight = Math.round(size * 0.5);
@@ -287,6 +293,7 @@ async function createCropSafeBase(heroPath: string, ratio: Ratio, primaryColor: 
   };
 }
 
+// The default "logo" is a text lockup from brand.name. A real brand swaps in a versioned SVG with clear-space rules.
 export function renderOverlay(
   { brief, market, ratio }: { brief: CampaignBrief; market: Market; ratio: Ratio },
   width: number,
@@ -296,6 +303,7 @@ export function renderOverlay(
   const isLandscape = ratio === "16x9";
   const margin = Math.round(width * 0.055);
   const titleSize = isVertical ? 86 : isLandscape ? 78 : 76;
+  // Character-count fit, not font metrics. Fine as a gate; production measures shaped glyphs.
   const maxChars = isVertical ? 18 : isLandscape ? 21 : 18;
   const messageLayout = fitHeadline(market.message.toUpperCase(), maxChars, 4, isLandscape);
   const titleY = isVertical ? 470 : 300;
@@ -381,6 +389,7 @@ function escapeXml(value: string): string {
   return value.replace(/[<>&'\"]/g, (character) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", "\"": "&quot;" })[character]!);
 }
 
+// WCAG-style 4.5:1 on the configured token pairs only. Says nothing about text over photography.
 function evaluateTokenContrast(primaryColor: string, secondaryColor: string): { passed: boolean; evidence: string } {
   const primaryRatio = contrastRatio("#FFFFFF", primaryColor);
   const secondaryRatio = contrastRatio("#111111", secondaryColor);
