@@ -73,7 +73,7 @@ FIREFLY_SERVICES_CLIENT_ID=...
 FIREFLY_SERVICES_CLIENT_SECRET=...
 ```
 
-The server uses OAuth client credentials and Adobe Firefly's asynchronous Image5 endpoint. It polls the job URL and downloads the successful result from `result.outputs`.
+The server exchanges the client credentials for an IMS token, posts the scene-only prompt to Firefly Image 5 (`POST /v4/images/generate-async` with the `x-model-version: image5` header), follows the returned `links.result` job URL until the job reports `succeeded`, and downloads the image from `result.outputs`. The adapter is contract-tested against Adobe's published OpenAPI reference; a live run still requires Firefly Services credentials with Image 5 entitlement.
 
 ### OpenAI Images fallback
 

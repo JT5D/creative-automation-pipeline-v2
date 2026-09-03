@@ -2,14 +2,28 @@ import { buildGenerationPrompt } from "./prompt.js";
 import type { GenerateRequest, GeneratedAsset, ImageProvider } from "./types.js";
 
 const TOKEN_URL = "https://ims-na1.adobelogin.com/ims/token/v3";
-const GENERATE_URL = "https://firefly-api.adobe.io/v3/images/generate-async";
+// Firefly Image 5 is served by the v4 async route and requires the x-model-version header.
+// Contract: https://developer.adobe.com/firefly-services/docs/firefly-api/api/ ("Generate images with Image5").
+const GENERATE_URL = "https://firefly-api.adobe.io/v4/images/generate-async";
+const MODEL_VERSION = "image5";
+const TOKEN_SCOPE = "openid,AdobeID,session,additional_info,read_organizations,firefly_api,ff_apis";
+const POLL_ATTEMPTS = 30;
+const POLL_INTERVAL_MS = 1_000;
+const TERMINAL_FAILURES = new Set(["failed", "cancelled", "cancel_pending", "timeout"]);
 
-type FireflyPayload = {
-  outputs?: Array<{ image?: { url?: string } }>;
-  result?: { outputs?: Array<{ image?: { url?: string } }> };
-  jobId?: string;
-  statusUrl?: string;
+// 200 from /v4/images/generate-async: links to the /v3/status and /v3/cancel job routes.
+type FireflyAcceptedJob = {
+  links?: { result?: { href?: string }; cancel?: { href?: string } };
+  progress?: number;
+};
+
+// 200 from /v3/status/{jobId}: "succeeded" carries result.outputs; other states carry an error code.
+type FireflyJobStatus = {
   status?: string;
+  jobId?: string;
+  result?: { outputs?: Array<{ seed?: number; image?: { url?: string } }> };
+  error_code?: string;
+  message?: string;
 };
 
 export class FireflyProvider implements ImageProvider {
@@ -31,18 +45,12 @@ export class FireflyProvider implements ImageProvider {
     const token = await this.getAccessToken();
     const response = await this.fetcher(GENERATE_URL, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "x-api-key": this.clientId,
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      },
+      headers: { ...this.authHeaders(token), "x-model-version": MODEL_VERSION, "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt,
         aspectRatio: "1:1",
         modelId: this.model,
         numVariations: 1,
-        referenceBlobs: [],
         modelSpecificPayload: { localeCode: "en-US", prompt_reasoner: "quality" }
       })
     });
@@ -51,14 +59,13 @@ export class FireflyProvider implements ImageProvider {
       throw new Error(`Firefly generation failed (${response.status}): ${await boundedText(response)}`);
     }
 
-    let payload = await response.json() as FireflyPayload;
-    const requestId = payload.jobId;
-    if (!imageUrl(payload) && payload.statusUrl) {
-      payload = await this.poll(payload.statusUrl, token);
-    }
+    const accepted = await response.json() as FireflyAcceptedJob;
+    const statusUrl = accepted.links?.result?.href;
+    if (!statusUrl) throw new Error("Firefly returned no result link for the generation job");
 
-    const generatedImageUrl = imageUrl(payload);
-    if (!generatedImageUrl) throw new Error("Firefly returned no image URL");
+    const job = await this.poll(statusUrl, token);
+    const generatedImageUrl = job.result?.outputs?.[0]?.image?.url;
+    if (!generatedImageUrl) throw new Error("Firefly job succeeded without an image URL");
 
     const image = await this.fetcher(generatedImageUrl);
     if (!image.ok) throw new Error(`Firefly image download failed (${image.status})`);
@@ -69,8 +76,12 @@ export class FireflyProvider implements ImageProvider {
       provider: this.name,
       model: this.model,
       prompt,
-      requestId: requestId ?? payload.jobId
+      requestId: job.jobId
     };
+  }
+
+  private authHeaders(token: string): Record<string, string> {
+    return { Authorization: `Bearer ${token}`, "x-api-key": this.clientId, Accept: "application/json" };
   }
 
   private async getAccessToken(): Promise<string> {
@@ -78,7 +89,7 @@ export class FireflyProvider implements ImageProvider {
       grant_type: "client_credentials",
       client_id: this.clientId,
       client_secret: this.clientSecret,
-      scope: "openid,AdobeID,read_organizations,firefly_enterprise,firefly_api,ff_apis"
+      scope: TOKEN_SCOPE
     });
     const response = await this.fetcher(TOKEN_URL, {
       method: "POST",
@@ -91,25 +102,21 @@ export class FireflyProvider implements ImageProvider {
     return payload.access_token;
   }
 
-  private async poll(statusUrl: string, token: string): Promise<FireflyPayload> {
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      const response = await this.fetcher(statusUrl, {
-        headers: { Authorization: `Bearer ${token}`, "x-api-key": this.clientId, Accept: "application/json" }
-      });
+  private async poll(statusUrl: string, token: string): Promise<FireflyJobStatus> {
+    for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt += 1) {
+      const response = await this.fetcher(statusUrl, { headers: this.authHeaders(token) });
       if (!response.ok) throw new Error(`Firefly status check failed (${response.status})`);
-      const payload = await response.json() as FireflyPayload;
-      if (imageUrl(payload)) return payload;
-      if (payload.status && ["failed", "cancelled"].includes(payload.status.toLowerCase())) {
-        throw new Error(`Firefly job ${payload.status}`);
+      const job = await response.json() as FireflyJobStatus;
+      const status = job.status?.toLowerCase();
+      if (status === "succeeded") return job;
+      if (status && TERMINAL_FAILURES.has(status)) {
+        const detail = [job.error_code, job.message].filter(Boolean).join(": ");
+        throw new Error(`Firefly job ${status}${detail ? ` (${detail})` : ""}`);
       }
-      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
-    throw new Error("Firefly generation timed out after 30 seconds");
+    throw new Error(`Firefly generation timed out after ${(POLL_ATTEMPTS * POLL_INTERVAL_MS) / 1000} seconds`);
   }
-}
-
-function imageUrl(payload: FireflyPayload): string | undefined {
-  return payload.result?.outputs?.[0]?.image?.url ?? payload.outputs?.[0]?.image?.url;
 }
 
 async function boundedText(response: Response): Promise<string> {
