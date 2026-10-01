@@ -47,7 +47,7 @@ export const CampaignBriefSchema = z.object({
     secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     prohibitedWords: z.array(z.string().min(2)).default([])
   }).strict(),
-  products: z.array(ProductSchema).min(2, "The assignment requires at least two products"),
+  products: z.array(ProductSchema).min(2, "A campaign needs at least two products"),
   markets: z.array(MarketSchema).min(1),
   ratios: z.array(RatioSchema).length(3).refine(
     (ratios) => new Set(ratios).size === 3 && ["1x1", "9x16", "16x9"].every((ratio) => ratios.includes(ratio as Ratio)),

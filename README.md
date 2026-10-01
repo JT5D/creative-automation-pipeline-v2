@@ -95,7 +95,7 @@ Gemini uses the Interactions image API and the same scene-only prompt boundary a
 
 ## Campaign brief
 
-JSON and YAML are accepted. The schema requires at least two products and all three assignment ratios.
+JSON and YAML are accepted. The schema requires at least two products and all three required ratios.
 
 ```yaml
 schemaVersion: "1.0"
@@ -180,9 +180,9 @@ npm run check
 
 This runs both TypeScript configurations, the Vitest suite, and the production build. Tests cover the 12-output run, exact dimensions and output organization, legal/copy-fit/contrast failures before provider spend, approved-packshot preservation, provider authentication and generation contracts, strict brief and BCP 47 validation, uploads, API execution, and ZIP download.
 
-## Assignment and bonus coverage
+## Requirements coverage
 
-| Evaluation item | Evidence in the MVP |
+| Requirement | Evidence in the MVP |
 |---|---|
 | JSON/YAML brief with 2+ products, region, audience, and message | Strict import, complete in-app brief editor, field form, and four ready-to-run examples |
 | Reuse supplied assets; use GenAI when a hero is missing | Approved-asset path plus Firefly/OpenAI/Gemini scene generation and deterministic approved-packshot composition |
@@ -191,10 +191,10 @@ This runs both TypeScript configurations, the Vitest suite, and the production b
 | Local CLI/application | React UI and CLI call the same pipeline |
 | Organized delivery | Timestamped product/ratio/locale folders, report, and ZIP |
 | Run/design/assumption/limit documentation | This README documents setup, inputs, outputs, design decisions, assumptions, and limitations |
-| **Bonus: localization** | Eight-language European preset; localized message, CTA, and disclaimer editing |
-| **Bonus: brand compliance** | Deterministic lockup/palette, hero framing, safe zones, copy fit, and token contrast evidence |
-| **Bonus: legal checks** | Configurable prohibited-term gate runs before provider spend |
-| **Bonus: reporting** | Provenance, provider/model/prompt, checks, events, runtime, throughput, and time-saved estimate |
+| Localization | Eight-language European preset; localized message, CTA, and disclaimer editing |
+| Brand compliance | Deterministic lockup/palette, hero framing, safe zones, copy fit, and token contrast evidence |
+| Legal checks | Configurable prohibited-term gate runs before provider spend |
+| Reporting | Provenance, provider/model/prompt, checks, events, runtime, throughput, and time-saved estimate |
 
 ## Business goals and evidence
 

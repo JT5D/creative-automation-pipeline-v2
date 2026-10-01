@@ -1,6 +1,6 @@
 # Upload test assets
 
-Use these files with the in-app approved-hero uploader to exercise the supported image formats:
+Use these files with the in-app approved-hero uploader to try the supported image formats:
 
 | File | Format | Asset shape |
 |---|---|---|
